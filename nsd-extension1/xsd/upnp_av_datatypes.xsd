@@ -1,0 +1,92 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	targetNamespace="http://www.w3.org/2001/XMLSchema">
+
+	<xs:simpleType name="A_ARG_TYPE_SortCriteria">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+
+	<xs:simpleType name="A_ARG_TYPE_TransferLength">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="TransferIDs">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="A_ARG_TYPE_UpdateID">
+		<xs:restriction base="xs:unsignedShort" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="A_ARG_TYPE_SearchCriteria">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="A_ARG_TYPE_Filter">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="ContainerUpdateIDs">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="A_ARG_TYPE_Result">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="A_ARG_TYPE_Index">
+		<xs:restriction base="xs:unsignedShort" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="A_ARG_TYPE_TransferID">
+		<xs:restriction base="xs:unsignedShort" />
+	</xs:simpleType>
+	
+	<xs:simpleType name="A_ARG_TYPE_TagValueList">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>							
+			
+	<xs:simpleType name="A_ARG_TYPE_URI">
+		<xs:restriction base="xs:anyURI" />
+	</xs:simpleType>	
+
+	<xs:simpleType name="A_ARG_TYPE_ObjectID">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>	
+	
+	<xs:simpleType name="SortCapabilities">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>	
+	
+	<xs:simpleType name="SearchCapabilities">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>				
+
+	<xs:simpleType name="A_ARG_TYPE_Count">
+		<xs:restriction base="xs:unsignedShort" />
+	</xs:simpleType>				
+
+	<xs:simpleType name="A_ARG_TYPE_BrowseFlag">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="BrowseMetadata"/>
+			<xs:enumeration value="BrowseDirectChildren"/>				
+		</xs:restriction>
+	</xs:simpleType>				
+
+	<xs:simpleType name="SystemUpdateID">
+		<xs:restriction base="xs:unsignedShort" />
+	</xs:simpleType>				
+
+	<xs:simpleType name="A_ARG_TYPE_TransferStatus">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="COMPLETED"/>
+			<xs:enumeration value="ERROR"/>
+			<xs:enumeration value="IN_PROGRESS"/>
+			<xs:enumeration value="STOPPED"/>						
+		</xs:restriction>
+	</xs:simpleType>				
+
+	<xs:simpleType name="A_ARG_TYPE_TransferTotal">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>				
+
+</xs:schema>

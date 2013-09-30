@@ -1,0 +1,364 @@
+<html>
+	<head>
+        <script type="text/javascript" src="util/parser/jssaxparser/sax.js"></script>
+        <script type="text/javascript" src="util/parser/jssaxparser/DefaultHandlers.js"></script>
+        <script type="text/javascript" src="util/parser/jssaxparser/DummyContentHandler.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/lib/ohnet.soaprequest.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/lib/ohnet.serviceproperty.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/Proxies/CpUpnpOrgAVTransport1.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/Proxies/CpUpnpOrgAVTransport2.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/Proxies/CpUpnpOrgConnectionManager1.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/Proxies/CpUpnpOrgConnectionManager2.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/Proxies/CpUpnpOrgContentDirectory1.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/Proxies/CpUpnpOrgContentDirectory2.js"></script>
+        <script type="text/javascript" src="util/ohnet/ControlPoint/Proxies/CpUpnpOrgContentDirectory3.js"></script>
+        <script type="text/javascript" src="js/DidlNode.js"></script>
+        <script type="text/javascript" src="js/ServiceConfig.js"></script>
+        <script type="text/javascript" src="js/ServiceEvent.js"></script>
+        <script type="text/javascript" src="js/metadata.js"></script>
+        <script type="text/javascript" src="util/jstree-v.pre1.0/_lib/jquery.js"></script>
+        <script type="text/javascript" src="util/jstree-v.pre1.0/_lib/jquery.cookie.js"></script>
+        <script type="text/javascript" src="util/jstree-v.pre1.0/_lib/jquery.hotkeys.js"></script>
+        <script type="text/javascript" src="util/jstree-v.pre1.0/jquery.jstree.js"></script>
+
+        <script type="text/javascript" src="util/jquery-mobile/jquery.mobile-1.3.1.min.js"></script>
+        <link type="text/css" rel="stylesheet" href="util/jquery-mobile/jquery.mobile-1.3.1.min.css"/>
+
+        <link type="text/css" rel="stylesheet" href="util/jstree-v.pre1.0/themes/apple/style.css"/>
+	</head>
+
+<body>
+    <div data-role="header">
+        <h1>Network Service Discovery Demo</h1>
+    </div>
+    <!--UPnP ControlPoint-->
+    <br>
+	<script>
+    var contentDirectories = new Array();
+    var avTransports = new Array();
+    var LIST_OPTIONS = new Array();
+    var allEntries = new Array();
+    var selectedNode;
+    var searchNode;
+
+	function discoverServices() {
+		// Get network services
+		if (navigator.getNetworkServices) {
+			navigator.getNetworkServices(
+                ["upnp:urn:schemas-upnp-org:service:ContentDirectory:1",
+                 "upnp:urn:schemas-upnp-org:service:ContentDirectory:2",
+                 "upnp:urn:schemas-upnp-org:service:ContentDirectory:3",
+                 "upnp:urn:schemas-upnp-org:service:AVTransport:1",
+                 "upnp:urn:schemas-upnp-org:service:AVTransport:2"], 
+                servicesDiscovered, 
+                serviceError);
+		}
+	}
+	
+	function servicesDiscovered(services) {
+        var nodes = new Array();
+        var idx = 0;
+        var idx2 = 0;
+
+	    for (var i = 0; i < services.length; i++) {
+            
+            var config = new ServiceConfig(services[i].config);
+
+            if (services[i].type.indexOf("ContentDirectory") != -1) {
+                contentDirectories[idx] = createContentDirectory(services[i]);
+                //console.log("Service " + config.friendlyName +" : ContentDirectory version " + services[i].type.split(':')[5]);
+                // Subscribe UPnP events
+                services[i].onnotify = function(msg) {
+                    var evt = new ServiceEvent(msg.data);
+                    var containerId = evt.ContainerUpdateIDs.split(',')[0];
+                    var entry = allEntries[containerId];
+                    var children;
+                    $("#tree").jstree("search", entry.title);
+                    
+                    children = jQuery.jstree._reference("#tree")._get_children(searchNode);
+	                for (var i = 0; i < children.length; i++) {
+                        $("#tree").jstree("delete_node", children[i]);
+                    }
+                    browseEntry(entry.index, entry.id, createNodes);
+                }
+
+                nodes[idx] = new Entry(idx, 0);
+                nodes[idx].setType("root");
+                nodes[idx].setTitle(config.friendlyName);
+                idx++;
+            } else if (services[i].type.indexOf("AVTransport") != -1) {
+                avTransports[idx2] = createAVTransport(services[i]);
+                addToCombo(config.friendlyName, idx2);
+                idx2++;
+            } 
+        }
+
+        buildTree(nodes);
+        $('#scanButton').hide();
+	}
+	
+    function addToCombo(label, index) {
+        LIST_OPTIONS.push({label: label, index: index});
+        var html = '';
+        var i = LIST_OPTIONS.length - 1;
+        html+= '<input type="radio" name="list-choice" id="list-choice-' + i + '"';
+        html+= 'value="' + LIST_OPTIONS[i].index + '"';
+        if (i == 0) {
+            html+= 'checked="checked"';
+        }
+        html+= '/>\n';
+        html+= '<label data-theme="b" id="list-label-' + i + '" for="list-choice-' + i + '">';
+        html+= LIST_OPTIONS[i].label + '</label>';
+
+
+        $('#listFieldset').append(html);
+        $('#listFieldset').trigger('create');
+    }
+
+	function serviceError(error) {
+		// Error callback for service network discovery
+		document.getElementById('servicesDiv').innerHTML = "An error occurred (error code " + error.code + ").";
+	}
+	
+    function createContentDirectory(service) {
+  
+        var contentDirectory;
+        
+        var version = service.type.split(':')[5];
+        
+        if (version == 1)
+            contentDirectory = new CpProxySchemasUpnpOrgContentDirectory1(service.url);
+        else if (version == 2)
+            contentDirectory = new CpProxySchemasUpnpOrgContentDirectory2(service.url);
+        else if (version == 3)
+            contentDirectory = new CpProxySchemasUpnpOrgContentDirectory3(service.url);
+
+        return contentDirectory;
+    }
+
+    function createAVTransport(service) {
+
+        var avTransport;
+        var version = service.type.split(':')[5];
+
+        if (version == 1)
+            avTransport = new CpProxySchemasUpnpOrgAVTransport1(service.url);
+        else if (version == 2)
+            avTransport = new CpProxySchemasUpnpOrgAVTransport2(service.url);
+
+        return avTransport;
+    }
+
+    function browseEntry(index, id, callback) {
+        var contentDir = contentDirectories[index];
+
+ 	    //console.log("BrowseDirectChildren: " + id);
+        contentDir.Browse(id, "BrowseDirectChildren", "@childCount", "0", "0", "+dc:title",
+            function(msg) {
+                var idx;
+	            //console.log("URL : " + contentDir.url);
+	            //console.log("[NumberReturned] : " + msg["NumberReturned"]);
+	            //console.log("[TotalMatches]   : " + msg["TotalMatches"]);
+	            //console.log("[UpdateID]       : " + msg["UpdateID"]);
+                                               
+                for (var idx = 0; idx < contentDirectories.length; idx++) 
+                    if (contentDir == contentDirectories[idx])
+                        break;                            
+                var nodes = parseDIDL(idx, msg["Result"]);
+        
+                callback(nodes);
+            },
+            function(errorMsg, msg) {
+	            console.log("ERROR : Browse failed :" + errorMsg);
+            });
+    }
+
+    function browseMetadata(index, id) {
+        var contentDir = contentDirectories[index];
+
+ 	    //console.log("BrowseMetadata: " + id);
+        contentDir.Browse(id, "BrowseMetadata", "*", "0", "0", "+dc:title",
+            function(msg) {
+	            //console.log("URL : " + contentDir.url);
+	            //console.log("[NumberReturned] : " + msg["NumberReturned"]);
+	            //console.log("[TotalMatches]   : " + msg["TotalMatches"]);
+	            //console.log("[UpdateID]       : " + msg["UpdateID"]);
+                for (var idx = 0; idx < contentDirectories.length; idx++) 
+                    if (contentDir == contentDirectories[idx])
+                        break;                            
+                var node = parseDIDL(idx, msg["Result"]);
+
+                displayMetadata(node[0]);
+                selectedNode = node[0];
+            },
+            function(errorMsg, msg) {
+	            console.log("Browse failed !!!");
+            });
+    }
+
+    function parseDIDL(index, xDIDL) {
+        var didlNode = new DidlNode(index, xDIDL, addEntry);
+        return didlNode.getNodes();
+    }
+
+    function addEntry(key, entry) {
+        allEntries[key] = entry;
+    }
+
+    function getAVTransport() {
+        // Get index from list UI
+        var indexUI = $('input[name=list-choice]:checked').val();
+        return avTransports[indexUI];
+    }
+
+    function play() {
+        var avTransport = getAVTransport();
+        
+        avTransport.SetAVTransportURI(0, selectedNode.url, selectedNode.didl,
+            function(msg) {
+                //console.log("SetAVTransportURI succeed");
+                avTransport.Play(0, "1",
+                    function(msg) { 
+                        //console.log("Play succeed"); 
+                    }, 
+                    function(errorMsg, msg) { console.log("Play failed !!!");
+                });
+            }, 
+            function(errorMsg, msg) {
+                console.log("SetAVTransportURI failed !!!");
+            });
+    }
+
+    function pause() {
+        var avTransport = getAVTransport();
+
+        avTransport.Pause(0, 
+            function(msg) { 
+                //console.log("Pause succeed"); 
+            }, 
+            function(errorMsg, msg) { console.log("Play failed !!!");
+        });
+    }
+
+    function stop() {
+        var avTransport = getAVTransport();
+
+        avTransport.Stop(0,
+            function(msg) { 
+                //console.log("Stop succeed"); 
+            }, 
+            function(errorMsg, msg) { console.log("Play failed !!!");
+        });
+    }
+
+    function buildTree(nodes) {
+        var jsonNodes = new Array();
+
+	    for (var i = 0; i < nodes.length; i++) {
+            jsonNodes.push(nodes[i].toJSON());
+        }
+
+        $("#tree").jstree({
+            "json_data" : {"data": jsonNodes },
+            "ui" : { "select_limit" : 1 },
+            "types" : {
+                "valid_children" : [ "root" ],
+                "types" : {
+                    "root" : {
+                        "icon" : { "image" : "images/root.png" },
+                        "valid_children" : [ "container", "image_item", "video_item", "audio_item" ]
+                    },
+                    "container" : {
+                        "icon" : { "image" : "images/folder.png" },
+                        "valid_children" : [ "container", "image_item", "video_item", "audio_item" ]
+                    },
+                    "image_item" : {
+                        "icon" : { "image" : "images/picture.png" },
+                        "valid_children" : ["none"],
+                        "max_children"  : -2
+                    },
+                    "video_item" : {
+                        "icon" : { "image" : "images/video.png" },
+                        "valid_children" : ["none"],
+                        "max_children"  : -2
+                    },
+                    "audio_item" : {
+                        "icon" : { "image" : "images/music.png" },
+                        "valid_children" : [ "none" ],
+                        "max_children"  : -2
+                    }
+                }
+            },
+            "themes" : {
+                "theme" : "apple",
+                "url" : "themes/apple/style.css",
+                "dots" : true,
+                "icons" : true
+            },
+            "plugins" : [ "themes", "json_data", "ui", "crrm", "types", "search"] })
+            .bind("open_node.jstree", function (event, data) {
+                $("#tree").jstree("deselect_all");
+                $("#tree").jstree("select_node", data.rslt.obj);
+                var children = jQuery.jstree._reference("#tree")._get_children(data.rslt.obj);
+                if (children.length == 0) {
+                    browseEntry(data.rslt.obj.attr("index"),
+                                data.rslt.obj.attr("id"),
+                                createNodes);
+                }
+            })
+            .bind("select_node.jstree", function (event, data) {
+                var type = data.rslt.obj.attr("rel");
+                if ( (type != "root") && (type != "container") ) {
+                    browseMetadata(data.rslt.obj.attr("index"),
+                                    data.rslt.obj.attr("id"));
+                    $('#playButton').show();
+                    $('#pauseButton').show();
+                    $('#stopButton').show();
+                    $('#metadata').show();
+                    $('#listDiv').show();
+                }
+                else {
+                    $('#playButton').hide();
+                    $('#pauseButton').hide();
+                    $('#stopButton').hide();
+                    $('#metadata').hide();
+                    $('#listDiv').hide();
+                }
+            })
+            // Search plugin bind to search
+            .bind("search.jstree", function (e, data) { 
+                searchNode = data.rslt.obj;
+            });
+    }            
+
+    function createNodes(nodes) {
+        for (var i = 0; i < nodes.length; i++) {
+            $("#tree").jstree("create", null, "inside", nodes[i].toJSON(), null, true);
+        }
+    }
+
+    </script>
+            	
+    <a href="#" id="scanButton" data-role="button" onclick="discoverServices();">Scan Network</a>
+
+
+    <div id="tree" class="jstree"></div>
+	<div id="metadata"></div>
+    
+	<div id="servicesDiv"></div>
+    
+    <div id="listDiv" style="display: none">
+        <h2>Select Media Renderer</h2>
+        <fieldset data-role="controlgroup" id="listFieldset" class="ui-body-a">
+        </fieldset>
+    </div>
+    
+    <div data-role="controlgroup" data-type="horizontal">
+        <a href="#" id="playButton" style="display: none" data-theme="b" data-role="button" onclick="play();">Play</a>
+        <a href="#" id="pauseButton" style="display: none" data-theme="b" data-role="button" onclick="pause();">Pause</a>
+        <a href="#" id="stopButton" style="display: none" data-theme="b" data-role="button" onclick="stop();">Stop</a>
+    </div> 
+    
+</body>
+</html>
+

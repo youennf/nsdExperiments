@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+    #grant {
+        padding-top: 20px;
+        cursor: pointer;   
+        color: #00f;
+    }
+    
+    #do {
+        cursor: pointer;        
+        padding-top: 20px;
+        color: #f00;
+    }
+    
+    #do.valid {
+        color: #00f;
+    }
+    #audio a {
+        padding-right: 10px;
+    }
+    </style>
+   <script src="js/parser/jssaxparser/sax.js"></script>
+   <script src="js/parser/jssaxparser/DefaultHandlers.js"></script>
+   <script src="js/parser/jssaxparser/DummyContentHandler.js"></script>
+   <script src="js/ohnet/ControlPoint/lib/ohnet.soaprequest.js"></script>
+   <script src="js/ohnet/ControlPoint/lib/ohnet.serviceproperty.js"></script>
+   <script src="js/ohnet/ControlPoint/Proxies/CpUpnpOrgAVTransport1.js"></script>
+   <script src="js/ohnet/ControlPoint/Proxies/CpUpnpOrgAVTransport2.js"></script>
+   <script src="js/ohnet/ControlPoint/Proxies/CpUpnpOrgConnectionManager1.js"></script>
+   <script src="js/ohnet/ControlPoint/Proxies/CpUpnpOrgConnectionManager2.js"></script>
+   <script src="js/ohnet/ControlPoint/Proxies/CpUpnpOrgContentDirectory1.js"></script>
+   <script src="js/ohnet/ControlPoint/Proxies/CpUpnpOrgContentDirectory2.js"></script>
+   <script src="js/ohnet/ControlPoint/Proxies/CpUpnpOrgContentDirectory3.js"></script>
+   <script src="js/utils/DidlNode.js"></script>
+   <script src="js/utils/ServiceConfig.js"></script>
+   <script src="js/utils/ServiceEvent.js"></script>
+  </head>
+  <body>
+    <div>
+        <div> 
+            Testing  UPnP Content Directory service access for
+            <input type="text" id="inputUrl" value="http://172.20.7.233:49152/upnp/control/cds" name="url"></input>
+            known as 'My Media Library' according SSDP
+        </div>
+        <div id="grant" onclick="doGrantRequest()">
+            Grant Access?
+        </div>
+        <div id="do" onclick="cdBrowse()">
+            Do a browse request?
+        </div>
+        <div id="resp">
+            <div id="status">
+            </div>
+            <div id="audio">
+            </div>
+            <div id="video">
+            </div>
+            <div id="image">
+            </div>
+        </div>
+    </div>
+    <div id="NSDAPI1"></div>
+    <script>
+        var idCounter = 0;
+        var pendingRequests = {};
+        function sendMessage(service, verb, headers, data, callback) {
+            var request = {service: service, verb:verb, headers:headers, data:data, id: idCounter};
+            pendingRequests[idCounter] =  {request: request, callback: callback};
+            idCounter++;
+            var event = new CustomEvent('nsdxhr-req', {detail:request});
+            document.dispatchEvent(event);
+        }
+        document.addEventListener("nsdxhr-res", function (e) {
+            var response = e.detail;
+            var request = pendingRequests[response.id];
+            if (request != null) {
+                pendingRequests[response.id] = null;
+                request.callback(response);
+            }
+        });
+        
+        var pendingAccessRequests = {};
+        function requestAccess(service, callback) {
+            pendingAccessRequests[service.url] = {service: service, callback: callback};
+            var event = new CustomEvent('nsdapicallrequest', {detail: service});
+            document.dispatchEvent(event);
+        }
+        document.addEventListener("nsdapicallagreed", function (e) {
+            var service = e.detail;
+            var accessRequest = pendingAccessRequests[service.url];
+            if (accessRequest != null) {
+                pendingAccessRequests[service.url] = null;
+                accessRequest.callback(true,service);
+            }
+        });
+        document.addEventListener("nsdapicallfailed", function (e) {
+            var service = e.detail;
+            var accessRequest = pendingAccessRequests[service.url];
+            if (accessRequest != null) {
+                pendingAccessRequests[service.url] = null;
+                accessRequest.callback(false,service);
+            }
+        });
+    </script>
+    <script>
+        var mediatomb = {name:"My MT Media Library", url: "http://localhost:49152/upnp/control/cds", type:
+            "upnp:urn:schemas-upnp-org:service:ContentDirectory:1"};
+        var wmp = {name:"My WMP Media Library", url:
+            "http://localhost:2869/upnphost/udhisapi.dll?control=uuid:5715dfde-b1a6-4142-88cf-9e03087a594e+urn:upnp-org:serviceId:ContentDirectory", 
+            type: "upnp:urn:schemas-upnp-org:service:ContentDirectory:1"};
+        service = wmp;
+        document.getElementById("inputUrl").setAttribute("value",service.url);
+        function doGrantRequest() {
+            service.url = document.getElementById("inputUrl").value;
+            requestAccess(service,
+                function(status, service) {
+                    console.log((status?"Granted":"Refused")+ " access to "+service.url);
+                    document.querySelector('#do').className = status?"valid":"";
+                });
+        }
+        var msg = 
+            '<SOAP-ENV:Envelope'+
+            '  xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">'+
+            '   <SOAP-ENV:Body>'+
+                '   <u:Browse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1">'+
+                    '   <ObjectID>A:ARTIST</ObjectID>'+
+                    '   <BrowseFlag>BrowseDirectChildren</BrowseFlag>'+
+                    '   <Filter>*</Filter>'+
+                    '   <StartingIndex>0</StartingIndex>'+
+                    '   <RequestedCount>10</RequestedCount>'+
+                    '   <SortCriteria>*</SortCriteria>'+
+                '    </u:Browse>'+
+            '   </SOAP-ENV:Body>'+
+            '</SOAP-ENV:Envelope>';
+            
+        var counter;
+        function cdBrowse() {
+        /*
+            sendMessage(service,"POST",  
+                {"Content-Type": "text/xml", "SOAPAction": "urn:schemas-upnp-org:service:ContentDirectory:1#Browse"}, 
+                msg, 
+                function(response) {
+                    document.querySelector('#resp').innerText = JSON.stringify(response.data);
+                }
+            );
+        */
+            proxy = new CpProxySchemasUpnpOrgContentDirectory1(service.url);
+            proxy.setAlternateTransport(service, sendMessage);
+            counter = 1;
+            browseEntry(proxy,"0", function(status, nodes) {
+                if (status) {
+                    document.querySelector('#status').innerHTML = "processing... (no entry found)";
+                    for (var cptr=0; cptr<nodes.length; cptr++) {
+                        processNode(nodes[cptr]);
+                    }
+                    counter--;
+                }
+                else {
+                    document.querySelector('#status').innerHTML = "error";
+                }
+            });
+        }
+
+        function addImage(url, title) {
+            //console.log("img:"+url);
+            document.querySelector('#status').innerHTML = "";
+            document.querySelector('#image').innerHTML += "<img src='"+url+"'></img>";
+        }
+        function addAudio(url, title) {
+            //console.log("audio:"+url);
+            document.querySelector('#status').innerHTML = "";
+            document.querySelector('#audio').innerHTML += 
+                ("<a href='" + url +"'>" + title + "</a>");
+                //("<audio controls type='audio/mpeg' src='"+url+"'></audio>");
+        }
+        
+        function processNode(nodeAttr) {
+            if (nodeAttr.type == "image_item") {
+                if (nodeAttr.url != null) {
+                    addImage(nodeAttr.url,nodeAttr.title);
+                }
+                else {
+                    browseMetadata(proxy, nodeAttr.id, function(status, nodes) {
+                        if (status) {
+                            if (nodes[0].url != null)
+                                addImage(nodes[0].url,nodes[0].title);
+                        }
+                        else console.log("error: "+ nodes);
+                    });
+                }
+            } 
+            else  if (nodeAttr.type == "audio_item") {
+                if (nodeAttr.url != null) {
+                    addAudio(nodeAttr.url, nodeAttr.title);
+                }
+                else {
+                    browseMetadata(proxy,nodeAttr.id, function(status, nodes) {
+                        if (status) {
+                            if (nodes[0].url != null)
+                                addAudio(nodes[0].url,nodes[0].title);
+                        }
+                        else console.log("error: "+ nodes);
+                    });
+                }            }
+            else if (nodeAttr.type == null || nodeAttr.type == "container") {
+                counter++;
+                browseEntry(proxy,nodeAttr.id, function(status, nodes) {
+                    counter--;
+                    if (status) {
+                        for (var cptr=0; cptr<nodes.length; cptr++) {
+                            processNode(nodes[cptr])
+                        }
+                    }
+                    else console.log("error: "+ nodes);
+                });
+            }
+            if (counter == 0) {
+                if (document.querySelector('#status').innerHTML != "") {
+                    document.querySelector('#status').innerHTML = "no image/audio found";
+                }
+            }
+        }
+        
+        function browseEntry(contentDir, id, callback) {
+            contentDir.Browse(id, "BrowseDirectChildren", "@childCount", "0", "0", "+dc:title",
+                function(msg) {
+                    var nodes = parseDIDL("0", msg["Result"]);
+            
+                    callback(true,nodes);
+                },
+                function(errorMsg, msg) {
+                    console.log("ERROR : Browse failed :" + errorMsg);
+                });
+        }
+
+        function browseMetadata(contentDir, id, callback) {
+            contentDir.Browse(id, "BrowseMetadata", "*", "0", "0", "+dc:title",
+                function(msg) {
+                    //console.log("URL : " + contentDir.url);
+                    //console.log("[NumberReturned] : " + msg["NumberReturned"]);
+                    //console.log("[TotalMatches]   : " + msg["TotalMatches"]);
+                    //console.log("[UpdateID]       : " + msg["UpdateID"]);
+                    var node = parseDIDL("0", msg["Result"]);
+                    callback(true,node);
+                },
+                function(errorMsg, msg) {
+                    console.log("Browse failed !!!");
+                });
+        }
+
+        function parseDIDL(index, xDIDL) {
+            var didlNode = new DidlNode(index, xDIDL, function(){});
+            return didlNode.getNodes();
+        }
+
+    </script>
+  </body>
+</html>

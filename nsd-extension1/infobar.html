@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      html {
+        height: 40px;
+      }
+      body {
+        background: #fffddd;
+        font: 16px Arial;
+        height: 100%;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-box-pack: center;
+      }
+      em {
+        font-weight: bold;
+        font-style: normal;
+      }
+      #validate {
+        float: left;
+        padding-left: 10px;
+        cursor: pointer;
+        color: #00f;
+      }
+      #refuse {
+        float: left;
+        padding-left: 10px;
+        cursor: pointer;
+        color: #00f;
+      }
+      #wrap {
+        float: left;
+        padding-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+        <div id="wrap">
+          Access requested to <em id="count"></em>
+        </div>
+        <div id="validate">
+            validate?
+        </div>
+        <div id="refuse"">
+            refuse?
+        </div>
+    </div>
+    <script src="infobar.js"></script>
+  </body>
+</html>

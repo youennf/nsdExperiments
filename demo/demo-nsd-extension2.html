@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+    #grant {
+        padding-top: 20px;
+        cursor: pointer;   
+        color: #00f;
+    }
+    
+    #do {
+        cursor: pointer;        
+        padding-top: 20px;
+        color: #f00;
+    }
+    
+    #do.valid {
+        color: #00f;
+    }
+    #audio a {
+        padding-right: 10px;
+    }
+  </style>
+  </head>
+  <body>
+    <div>
+        <div> 
+            Testing  UPnP Content Directory service access for
+            <input id="inputUrl" type="text" value="" name="url"></input>
+            that would be known as 'My Media Library'
+        </div>
+        <div id="grant" onclick="doGrantRequest()">
+            Grant Access?
+        </div>
+        <div id="do" onclick="cdBrowse()">
+            Do a browse request?
+        </div>
+        <div id="resp">
+            <div id="status">
+            </div>
+            <div id="audio">
+            </div>
+            <div id="video">
+            </div>
+            <div id="image">
+            </div>
+        </div>
+    </div>
+    <div id="NSDAPI2"></div>
+    <script>
+        var idCounter = 0;
+        var pendingRequests = {};
+        function sendMessage(service, functionName, arguments, callback) {
+            var request = {service: service, func: functionName, args:arguments, id: idCounter};
+            pendingRequests[idCounter] =  {request: request, callback: callback};
+            idCounter++;
+            var event = new CustomEvent('nsdxhr-req', {detail: request});
+            document.dispatchEvent(event);
+        }
+        document.addEventListener("nsdxhr-res", function (e) {
+            var response = e.detail;
+            var request = pendingRequests[response.id];
+            if (request != null) {
+                pendingRequests[response.id] = null;
+                request.callback(response.status, response.data);
+            }
+        });
+        
+        var pendingAccessRequests = {};
+        function requestAccess(service, callback) {
+            pendingAccessRequests[service.url] = {service: service, callback: callback};
+            var event = new CustomEvent('nsdapicallrequest', {detail: service});
+            document.dispatchEvent(event);
+        }
+        document.addEventListener("nsdapicallagreed", function (e) {
+            var service = e.detail;
+            var accessRequest = pendingAccessRequests[service.url];
+            if (accessRequest != null) {
+                pendingAccessRequests[service.url] = null;
+                accessRequest.callback(true,service);
+            }
+        });
+        document.addEventListener("nsdapicallfailed", function (e) {
+            var service = e.detail;
+            var accessRequest = pendingAccessRequests[service.url];
+            if (accessRequest != null) {
+                pendingAccessRequests[service.url] = null;
+                accessRequest.callback(false,service);
+            }
+        });
+    </script>
+    <script>
+        var mediatomb = {name:"My MT Media Library", url: "http://localhost:49152/upnp/control/cds", type:
+            "upnp:urn:schemas-upnp-org:service:ContentDirectory:1"};
+        var wmp = {name:"My WMP Media Library", url:
+            "http://localhost:2869/upnphost/udhisapi.dll?control=uuid:5715dfde-b1a6-4142-88cf-9e03087a594e+urn:upnp-org:serviceId:ContentDirectory", 
+            type: "upnp:urn:schemas-upnp-org:service:ContentDirectory:1"};
+        var service = wmp;
+        document.getElementById("inputUrl").setAttribute("value",service.url);
+        function doGrantRequest() {
+            service.url = document.getElementById("inputUrl").value;
+            requestAccess(service,
+                function(status, service) {
+                    console.log((status?"Granted":"Refused")+ " access to "+service.url);
+                    if (status) {
+                        document.querySelector('#do').className = "valid";
+                    }
+                });
+        }
+        function addImage(url, title) {
+            document.querySelector('#status').innerHTML = "";
+            document.querySelector('#image').innerHTML += "<img src='"+url+"'></img>";
+        }
+        function addAudio(url, title) {
+            document.querySelector('#status').innerHTML = "";
+            document.querySelector('#audio').innerHTML += 
+                ("<a href='" + url +"'>" + title + "</a>");
+                //("<audio controls type='audio/mpeg' src='"+url+"'></audio>");
+        }
+        
+        var count;
+        function cdBrowse() {
+            document.querySelector('#image').innerHTML = "";
+            document.querySelector('#audio').innerHTML = "";
+            document.querySelector('#video').innerHTML = "";
+            count = 1;
+            document.querySelector('#status').innerHTML = "processing... (no entry found)";
+            sendMessage(service, "createContentDirectory", {service:service}, function(status, data) {
+                if (status) {
+                    document.querySelector('#status').innerHTML = "processing... (no entry found)";
+//                    sendMessage(service, "browseEntry",{id:"A:ARTIST",index:0}, function(status, nodes) {
+                    sendMessage(service, "browseEntry",{id:"0",index:"0"}, function(status, nodes) {
+                        if (status) {
+                            for (var cptr=0; cptr<nodes.length; cptr++) {
+                                processNode(nodes[cptr].attr);
+                            }
+                        }
+                        else console.log("error: "+ nodes);
+                    });
+                    count--;
+                }
+                else
+                    document.querySelector('#status').innerHTML = "error";
+            });
+        }
+        
+        function processNode(nodeAttr) {
+            if (nodeAttr.rel == "image_item") {
+                if (nodeAttr.url != null) {
+                    addImage(nodeAttr.url, nodeAttr.title);
+                }
+                else {
+                    sendMessage(service, "browseMetadata",{id:nodeAttr.id,index:nodeAttr.index}, function(status, nodes) {
+                        if (status) {
+                            if (nodes[0].attr.url != null)
+                                addImage(nodes[0].attr.url,nodes[0].attr.title);
+                        }
+                        else console.log("error: "+ nodes);
+                    });
+                }
+            } 
+            else  if (nodeAttr.rel == "audio_item") {
+                if (nodeAttr.url != null) {
+                    console.log(nodeAttr);
+                    addAudio(nodeAttr.url, nodeAttr.title);
+                }
+                else {
+                    sendMessage(service, "browseMetadata",{id:nodeAttr.id,index:nodeAttr.index}, function(status, nodes) {
+                        if (status) {
+                            if (nodes[0].attr.url != null)
+                                console.log(nodes[0]);
+                                addAudio(nodes[0].attr.url, nodes[0].data);
+                        }
+                        else console.log("error: "+ nodes);
+                    });
+                }            }
+            else if (nodeAttr.rel == null || nodeAttr.rel == "container") {
+                count++;
+                sendMessage(service, "browseEntry",{id:nodeAttr.id,index:nodeAttr.index}, function(status, nodes) {
+                    if (status) {
+                        for (var cptr=0; cptr<nodes.length; cptr++) {
+                            processNode(nodes[cptr].attr)
+                        }
+                    }
+                    else 
+                        console.log("error: "+ nodes);
+                    count--;
+                });
+            }
+            if (count == 0) {
+                if (document.querySelector('#status').innerHTML != "") {
+                    document.querySelector('#status').innerHTML = "no image/audio found";
+                }
+            }
+        }
+        
+        
+    </script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name" : "NSDAPI2",
+  "version" : "0.1",
+  "description" : "UPnP AV Client",
+  "background" : {
+    "scripts": ["background.js"]
+  },
+  "permissions" : [ 
+    "infobars",
+    "https://*/*",
+    "http://*/*"],
+  "icons" : {
+    "16" : "nsd-16.png",
+    "48" : "nsd-48.png",
+    "128" : "nsd-128.png"
+  },
+  "content_scripts" : [
+    {
+      "matches" : ["file://*", "http://*/*","https://*/*" ],
+      "js" : [ "contentscript.js" ],
+      "run_at" : "document_idle",
+      "all_frames" : false
+    }
+  ],
+  "manifest_version": 2
+}

@@ -1,0 +1,117 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"
+	targetNamespace="urn:schemas-upnp-org:service:ContentDirectory:1">
+
+
+	<xs:import namespace="http://www.w3.org/2001/XMLSchema"
+		schemaLocation="upnp_av_datatypes.xsd" />
+
+	<xs:element name="GetSystemUpdateID">
+		<xs:complexType />
+	</xs:element>
+	
+	<xs:element name="GetSystemUpdateIDResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Id" type="xs:SystemUpdateID" minOccurs="1"
+					maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="Search">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="ContainerID" type="xs:A_ARG_TYPE_ObjectID"
+					minOccurs="1" maxOccurs="1" />
+				<xs:element name="SearchCriteria" type="xs:A_ARG_TYPE_SearchCriteria"
+					minOccurs="0" maxOccurs="1" />
+				<xs:element name="Filter" type="xs:A_ARG_TYPE_Filter"
+					minOccurs="0" maxOccurs="1" />
+				<xs:element name="StartingIndex" type="xs:A_ARG_TYPE_Index"
+					minOccurs="1" maxOccurs="1" />
+				<xs:element name="RequestedCount" type="xs:A_ARG_TYPE_Count"
+					minOccurs="1" maxOccurs="1" />
+				<xs:element name="SortCriteria" type="xs:A_ARG_TYPE_SortCriteria"
+					minOccurs="0" maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="SearchResponse">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="u:ContentResponse" />
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="GetSearchCapabilities">
+		<xs:complexType />
+	</xs:element>
+	
+	<xs:element name="GetSearchCapabilitiesResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="SearchCaps" type="xs:SearchCapabilities"
+					minOccurs="1" maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="GetSortCapabilities">
+		<xs:complexType />
+	</xs:element>
+
+	<xs:element name="GetSortCapabilitiesResponse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="SortCaps" type="xs:SortCapabilities"
+					minOccurs="1" maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="Browse">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="ObjectID" type="xs:A_ARG_TYPE_ObjectID"
+					minOccurs="1" maxOccurs="1" />
+				<xs:element name="BrowseFlag" type="xs:A_ARG_TYPE_BrowseFlag"
+					minOccurs="1" maxOccurs="1" />
+				<xs:element name="Filter" type="xs:A_ARG_TYPE_Filter"
+					minOccurs="0" maxOccurs="1" />
+				<xs:element name="StartingIndex" type="xs:A_ARG_TYPE_Index"
+					minOccurs="0" maxOccurs="1" />
+				<xs:element name="RequestedCount" type="xs:A_ARG_TYPE_Count"
+					minOccurs="0" maxOccurs="1" />
+				<xs:element name="SortCriteria" type="xs:A_ARG_TYPE_SortCriteria"
+					minOccurs="0" maxOccurs="1" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:element name="BrowseResponse">
+		<xs:complexType>
+			<xs:complexContent>
+				<xs:extension base="u:ContentResponse" />
+			</xs:complexContent>
+		</xs:complexType>
+	</xs:element>
+
+
+	<xs:complexType abstract="true" name="ContentResponse">
+		<xs:sequence>
+			<xs:element name="Result" type="xs:A_ARG_TYPE_Result"
+				minOccurs="1" maxOccurs="1" />
+			<xs:element name="NumberReturned" type="xs:A_ARG_TYPE_Count"
+				minOccurs="1" maxOccurs="1" />
+			<xs:element name="TotalMatches" type="xs:A_ARG_TYPE_Count"
+				minOccurs="1" maxOccurs="1" />
+			<xs:element name="UpdateID" type="xs:A_ARG_TYPE_UpdateID"
+				minOccurs="1" maxOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+
+
+</xs:schema>	
